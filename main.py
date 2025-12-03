@@ -93,7 +93,7 @@ class Model:
         model_data = [[ [n.bias, [e.weight for e in n.inputs]] for n in layer ] for layer in self.neural_network]
         
         logging.debug(f"Datos del modelo estructurados: {model_data}")
-        name = f"{uuid.uuid1()}.73nn"
+        name = f"{uuid.uuid4()}.73nn"
         try:
             logging.debug("Intenando guardar el modelo...")
             with open(name, 'w', encoding='utf-8') as model:
