@@ -22,11 +22,11 @@ class Neuron:
 
     def __str__(self):
         """Displays neuron value between bars."""
-        return f"| {self.value} |"
+        return f"({self.value})"
     
     def __repr__(self):
         """Same as __str__ for representation in lists/debugging."""
-        return f"| {self.value} |"
+        return f"({self.value})"
 
 class Connection:
     """
@@ -55,7 +55,7 @@ class Model:
         neural_network (list[list[Neuron]]): Nested list of layers, each containing neurons.
         activation_function (str): Name of the activation function used ("ReLU", "Sigmoid", etc.).
     """
-    def __init__(self, neural_network: list[list[Neuron]], activation_function:str = "LeakyReLU"):
+    def __init__(self):
         """
         Initializes the neural network model.
 
@@ -63,8 +63,33 @@ class Model:
             neural_network (list[list[Neuron]]): The architecture/layers of the network.
             activation_function (str): Desired activation function for neurons.
         """
-        self.neural_network = neural_network
-        self.activation_function = activation_function
+        self.neural_network = []
+        self.activation_function = ""
+        
+    def generate_layer(n: int):
+        return [Neuron(np.random.uniform(-1,1)) for _ in range(n)]
+
+    def generate_neural_network(n_entrada: int, layers: list[int]):
+        n = [Model.generate_layer(n_entrada)]
+        for l in layers:
+            n.append(Model.generate_layer(l))
+        n.append(Model.generate_layer(1))
+
+        for i, layer in enumerate(n):
+            if i != 0:
+                for neuron in layer:
+                    neuron.inputs = [Connection(np.random.uniform(-1,1), a_neuron) for a_neuron in n[i-1]]
+        
+        return n
+    
+    def new(input_neurons: int, hidden_layers: list[int], activation_function:str = "LeakyReLU"):
+        model = Model()
+        
+        model.neural_network = Model.generate_neural_network(input_neurons, hidden_layers)
+        
+        model.activation_function = activation_function
+        
+        return model
 
     def compress(self, n: float):
         """
@@ -154,22 +179,29 @@ class Model:
         return self.neural_network[-1][0]    # Return final output neuron
 
 
-# Example usage: Build and train a simple network to convert Celsius to Fahrenheit
-n1 = Neuron()                                       # Input neuron
-n2 = Neuron(np.random.uniform(-1,1))                # Output neuron with random bias
+# # Example usage: Build and train a simple network to convert Celsius to Fahrenheit
+# n1 = Neuron()                                       # Input neuron
+# n2 = Neuron(np.random.uniform(-1,1))                # Output neuron with random bias
 
-n2.inputs = [
-    Connection(np.random.uniform(-1,1), n1)         # Connect n1 to n2 with random weight
-]
+# n2.inputs = [
+#     Connection(np.random.uniform(-1,1), n1)         # Connect n1 to n2 with random weight
+# ]
 
-model = Model([
-    [n1],      # Input layer
-    [n2],      # Output layer
-], "LeakyReLU")
+# model = Model([
+#     [n1],      # Input layer
+#     [n2],      # Output layer
+# ], "LeakyReLU")
 
-# Prepare training dataset: pairs of Celsius and Fahrenheit values
-model.train([([c], ((c*(9/5))+32)) for c in range(500)], 1000, 0.000001, 0.001)
+# # Prepare training dataset: pairs of Celsius and Fahrenheit values
+# model.train([([c], ((c*(9/5))+32)) for c in range(500)], 1000, 0.000001, 0.001)
 
-print("Modelo entrenado.")
-print(model.predict([10]))
-print(model.predict([35]))
+# print("Modelo entrenado.")
+# print(model.predict([10]))
+# print(model.predict([35]))
+
+# model = Model.new(1, [])
+
+# model.train([([c], ((c*(9/5))+32)) for c in range(500)], 1000, 0.000001, 0.001)
+# print("Modelo entrenado.")
+# print(model.predict([10]))
+# print(model.predict([35]))
