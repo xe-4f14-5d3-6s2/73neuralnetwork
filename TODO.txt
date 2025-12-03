@@ -1,3 +1,5 @@
 - Hacer el sistema de backpropagation completo.
-- Añadir opción para guardar modelos entrenados.
+- Añadir opción para guardar modelos entrenados. (Completado)
 - Añadir opción para ver gráficas en tiempo real del aprendizaje.
+- Comprimir el archivo de salida del modelo para que ocupe menos espacio.
+- Añadir opción para cargar modelos ya entrenados
