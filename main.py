@@ -82,10 +82,15 @@ class Model:
             neural_network (list[list[Neuron]]): The architecture/layers of the network.
             activation_function (str): Desired activation function for neurons.
         """
-        self.neural_network = []
+        self.neural_network: list[list[Neuron]] = []
         self.activation_function = ""
         
         logging.debug("Model initialized.")
+        
+    def save(self):
+        model_data = [[ [n.bias, [e.weight for e in n.inputs]] for n in layer ] for layer in self.neural_network]
+        
+        print(model_data)
         
     @staticmethod
     def generate_layer(n: int):
