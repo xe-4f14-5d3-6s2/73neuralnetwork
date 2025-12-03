@@ -1,4 +1,12 @@
 import numpy as np 
+import logging
+
+DEBUG = True
+
+logging.basicConfig(
+    level=logging.DEBUG if DEBUG else logging.INFO,
+    format="[%(levelname)s] %(message)s"
+)
 
 class Neuron:
     """
@@ -19,6 +27,7 @@ class Neuron:
         self.inputs: list[Connection] = []
         self.bias = bias
         self.value: float = 0
+        logging.debug(f"Neuron created: bias={bias}")
 
     def __str__(self):
         """Displays neuron value between bars."""
@@ -46,6 +55,8 @@ class Connection:
         """
         self.weight = weight
         self.neuron = neuron        
+        
+        logging.debug(f"Connection created: weight={weight}, neuron={neuron.value}")
 
 class Model:
     """
@@ -66,9 +77,15 @@ class Model:
         self.neural_network = []
         self.activation_function = ""
         
+        logging.debug("Model initialized.")
+        
+    @staticmethod
     def generate_layer(n: int):
-        return [Neuron(np.random.uniform(-1,1)) for _ in range(n)]
+        layer = [Neuron(np.random.uniform(-1,1)) for _ in range(n)]
+        logging.debug(f"Layer generated ({n} neurons).")
+        return layer
 
+    @staticmethod
     def generate_neural_network(n_entrada: int, layers: list[int]):
         n = [Model.generate_layer(n_entrada)]
         for l in layers:
@@ -80,11 +97,13 @@ class Model:
                 for neuron in layer:
                     neuron.inputs = [Connection(np.random.uniform(-1,1), a_neuron) for a_neuron in n[i-1]]
         
+        logging.debug(f"Neural network generated: structure {[len(layer) for layer in n]}")
         return n
     
+    @staticmethod
     def new(input_neurons: int, hidden_layers: list[int], activation_function:str = "LeakyReLU"):
         model = Model()
-        
+        logging.debug(f"New Model: input_neurons={input_neurons}, hidden_layers={hidden_layers}, activation={activation_function}")
         model.neural_network = Model.generate_neural_network(input_neurons, hidden_layers)
         
         model.activation_function = activation_function
@@ -102,18 +121,20 @@ class Model:
             float: Output after activation function is applied.
         """
         if self.activation_function == "ReLU":
-            return 0 if n <= 0 else n
+            result = 0 if n <= 0 else n
         if self.activation_function == "LeakyReLU":
-            return n if n >= 0 else 0.01 * n
+            result = n if n >= 0 else 0.01 * n
         elif self.activation_function == "Sigmoid":
-            return 1 / (1 + np.exp(-n))
+            result = 1 / (1 + np.exp(-n))
         elif self.activation_function == "Binary":
-            return 0 if n <= 0 else 1
+            result = 0 if n <= 0 else 1
         elif self.activation_function == "Sign":
-            return -1 if n <= 0 else 1
+            result = -1 if n <= 0 else 1
         else:
-            print("Función de compresión desconocida.")
-            return 0
+            logging.warning("Unknown compression function.")
+            result = 0
+        logging.debug(f"Compress: input={n}, output={result}, function={self.activation_function}")
+        return result
 
     def activate(self, inputs: list[Connection], bias: float):
         """
@@ -129,7 +150,9 @@ class Model:
         W = np.array([e.weight for e in inputs])                # Array of weights
         A = np.array([e.neuron.value for e in inputs])          # Array of input neuron values
         z = np.sum(W * A) + bias                               # Weighted sum + bias
-        return self.compress(z)
+        act = self.compress(z)
+        logging.debug(f"Activating Neuron: inputs={A.tolist()}, weights={W.tolist()}, bias={bias}, z={z}, output={act}")
+        return act
 
     def train(self, dataset: list[tuple[list[float], float]], epochs=500, learning_rate_w=0.001, learning_rate_b=0.01):
         """
@@ -141,17 +164,23 @@ class Model:
             learning_rate_w (float): Learning rate for weights.
             learning_rate_b (float): Learning rate for biases.
         """
-        for _ in range(epochs):
+        logging.info(f"Starting training for {epochs} epochs.")
+        for ep in range(epochs):
             for inp, expected_output in dataset:
                 predicted_ouput = self.predict(inp)                # Perform forward pass
                 e = expected_output - predicted_ouput.value        # Compute error
+                logging.debug(f"Epoch={ep}, Input={inp}, Expected={expected_output}, Predicted={predicted_ouput.value}, Error={e}")
                 
                 # Update weights and biases for hidden/output layers
                 for layer in self.neural_network[1:]:
                     for neuron in layer:
                         for enlace in neuron.inputs:
+                            old_weight = enlace.weight
                             enlace.weight += learning_rate_w * e * enlace.neuron.value
+                            logging.debug(f"Updating weight: {old_weight} -> {enlace.weight}")
+                        old_bias= neuron.bias
                         neuron.bias += learning_rate_b * e
+                        logging.debug(f"Updating bias: {old_bias} -> {neuron.bias}")
 
     def predict(self, data: list[float]):
         """
@@ -164,18 +193,21 @@ class Model:
             Neuron or str: The output neuron (with value attribute) or error string if input size mismatched.
         """
         if len(data) != len(self.neural_network[0]): 
-            return "Los datos no coinciden con los parámetros de inp."
+            logging.error("The entered data does not match the input values of the neural network.")
+            return "The entered data does not match the input values of the neural network."
 
         for i, layer in enumerate(self.neural_network):
             if i == 0:
                 # Set values for the input layer neurons
-                for i, neuron in enumerate(layer):
-                    neuron.value = data[i]
+                for j, neuron in enumerate(layer):
+                    neuron.value = data[j]
+                    logging.debug(f"Asigned input layer: {data}")
             else:
                 # Calculate activation for the rest layers
-                for i, neuron in enumerate(layer):
+                for neuron in layer:
                     neuron.value = self.activate(neuron.inputs, neuron.bias)
-
+                logging.debug(f"Layer 3 processed. Values={[neuron.value for neuron in layer]}")
+        logging.info(f"Predicción final: {self.neural_network[-1][0]}")
         return self.neural_network[-1][0]    # Return final output neuron
 
 
