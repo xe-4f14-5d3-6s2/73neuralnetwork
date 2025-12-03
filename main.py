@@ -1,5 +1,6 @@
 import numpy as np 
 import logging
+import uuid
 
 DEBUG = True
 
@@ -88,9 +89,20 @@ class Model:
         logging.debug("Model initialized.")
         
     def save(self):
+        logging.debug("Estructurando modelo para ser guardado...")
         model_data = [[ [n.bias, [e.weight for e in n.inputs]] for n in layer ] for layer in self.neural_network]
         
-        print(model_data)
+        logging.debug(f"Datos del modelo estructurados: {model_data}")
+        name = f"{uuid.uuid1()}.73nn"
+        try:
+            logging.debug("Intenando guardar el modelo...")
+            with open(name, 'w', encoding='utf-8') as model:
+                model.write(f"{model_data}")
+                logging.info(f"Modelo guardado exitosamente como {name}")
+                return 1
+        except Exception as e:
+            logging.warning(f"Ocurrió un error al guardar el modelo: {e}")
+            return 0
         
     @staticmethod
     def generate_layer(n: int):
