@@ -30,11 +30,19 @@ class Neuron:
         logging.debug(f"Neuron created: bias={bias}")
 
     def __str__(self):
-        """Displays neuron value between bars."""
+        """
+        Returns a string representation of the neuron value inside parentheses.
+
+        Returns:
+            str: The value of the neuron as a string.
+        """
         return f"({self.value})"
     
     def __repr__(self):
-        """Same as __str__ for representation in lists/debugging."""
+        """
+        Returns: 
+            str: A string representation suitable for debugging/lists, showing the value.
+        """
         return f"({self.value})"
 
 class Connection:
@@ -70,7 +78,7 @@ class Model:
         """
         Initializes the neural network model.
 
-        Args:
+        Attributes:
             neural_network (list[list[Neuron]]): The architecture/layers of the network.
             activation_function (str): Desired activation function for neurons.
         """
@@ -81,12 +89,31 @@ class Model:
         
     @staticmethod
     def generate_layer(n: int):
+        """
+        Generates a layer containing n neurons with random biases.
+
+        Args:
+            n (int): Number of neurons in the layer.
+
+        Returns:
+            list[Neuron]: List of Neuron objects.
+        """
         layer = [Neuron(np.random.uniform(-1,1)) for _ in range(n)]
         logging.debug(f"Layer generated ({n} neurons).")
         return layer
 
     @staticmethod
     def generate_neural_network(n_entrada: int, layers: list[int]):
+        """
+        Creates a neural network architecture with a specified number of input neurons, hidden layers, and an output neuron.
+
+        Args:
+            n_entrada (int): Number of input neurons.
+            layers (list[int]): A list specifying the number of neurons in each hidden layer.
+
+        Returns:
+            list[list[Neuron]]: The created neural network as a list of layers.
+        """
         n = [Model.generate_layer(n_entrada)]
         for l in layers:
             n.append(Model.generate_layer(l))
@@ -94,6 +121,7 @@ class Model:
 
         for i, layer in enumerate(n):
             if i != 0:
+                # Connect each neuron to every neuron in the previous layer
                 for neuron in layer:
                     neuron.inputs = [Connection(np.random.uniform(-1,1), a_neuron) for a_neuron in n[i-1]]
         
@@ -102,6 +130,17 @@ class Model:
     
     @staticmethod
     def new(input_neurons: int, hidden_layers: list[int], activation_function:str = "LeakyReLU"):
+        """
+        Creates a new Model instance with the specified architecture and activation function.
+
+        Args:
+            input_neurons (int): Number of input neurons.
+            hidden_layers (list[int]): Number of neurons in each hidden layer.
+            activation_function (str): Name of the activation function to use.
+
+        Returns:
+            Model: The constructed Model instance.
+        """
         model = Model()
         logging.debug(f"New Model: input_neurons={input_neurons}, hidden_layers={hidden_layers}, activation={activation_function}")
         model.neural_network = Model.generate_neural_network(input_neurons, hidden_layers)
@@ -206,7 +245,7 @@ class Model:
                 # Calculate activation for the rest layers
                 for neuron in layer:
                     neuron.value = self.activate(neuron.inputs, neuron.bias)
-                logging.debug(f"Layer 3 processed. Values={[neuron.value for neuron in layer]}")
+                logging.debug(f"Layer {i} processed. Values={[neuron.value for neuron in layer]}")
         logging.info(f"Predicción final: {self.neural_network[-1][0]}")
         return self.neural_network[-1][0]    # Return final output neuron
 
