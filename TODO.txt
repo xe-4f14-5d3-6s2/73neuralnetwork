@@ -1,0 +1,3 @@
+- Hacer el sistema de backpropagation completo.
+- Añadir opción para guardar modelos entrenados.
+- Añadir opción para ver gráficas en tiempo real del aprendizaje.
