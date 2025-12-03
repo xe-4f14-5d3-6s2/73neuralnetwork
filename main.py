@@ -1,6 +1,5 @@
 import numpy as np 
-import logging
-import uuid
+import logging, uuid, zlib, json 
 
 DEBUG = True
 
@@ -94,10 +93,14 @@ class Model:
         
         logging.debug(f"Datos del modelo estructurados: {model_data}")
         name = f"{uuid.uuid4()}.73nn"
+        
+        model_data_string = f"{model_data}".encode("utf-8")
+        logging.debug("Comprimiendo modelo...")
+        
         try:
             logging.debug("Intenando guardar el modelo...")
-            with open(name, 'w', encoding='utf-8') as model:
-                model.write(f"{model_data}")
+            with open(name, 'wb') as model:
+                model.write(zlib.compress(model_data_string, 9))
                 logging.info(f"Modelo guardado exitosamente como {name}")
                 return 1
         except Exception as e:
