@@ -1,9 +1,9 @@
 import numpy as np 
 
 
-class Neurona:
+class Neuron:
     def __init__(self, bias: float = 0):
-        self.entradas:list[Enlace] = []
+        self.inputs:list[Connection] = []
         self.bias = bias
         
         self.value: float = 0
@@ -14,73 +14,73 @@ class Neurona:
     def __repr__(self):
         return f"| {self.value} |"
 
-class Enlace:
-    def __init__(self, peso: float, neurona: Neurona):
-        self.peso = peso
-        self.neurona = neurona        
+class Connection:
+    def __init__(self, weight: float, neuron: Neuron):
+        self.weight = weight
+        self.neuron = neuron        
     
 class Model:
-    def __init__(self, red_neuronal: list[list[Neurona]], compression:str = "ReLU"):
-        self.red_neuronal = red_neuronal
-        self.compression = compression
+    def __init__(self, neural_network: list[list[Neuron]], activation_function:str = "ReLU"):
+        self.neural_network = neural_network
+        self.activation_function = activation_function
         
     def compress(self, n: float):
-        if self.compression == "ReLU":
+        if self.activation_function == "ReLU":
             return 0 if n <= 0 else n
-        if self.compression == "LeakyReLU":
+        if self.activation_function == "LeakyReLU":
             return n if n >= 0 else 0.01 * n
-        elif self.compression == "Sigmoid":
+        elif self.activation_function == "Sigmoid":
             return 1 / (1 + np.exp(-n))
-        elif self.compression == "Binary":
+        elif self.activation_function == "Binary":
             return 0 if n <= 0 else 1
-        elif self.compression == "Sign":
+        elif self.activation_function == "Sign":
             return -1 if n <= 0 else 1
         else:
             print("Función de compresión desconocida.")
             return 0
         
-    def activation(self, entradas: list[Enlace], bias: float):
-        W = np.array([e.peso for e in entradas])
-        A = np.array([e.neurona.value for e in entradas])
+    def activate(self, inputs: list[Connection], bias: float):
+        W = np.array([e.weight for e in inputs])
+        A = np.array([e.neuron.value for e in inputs])
         
         z = np.sum(W * A) + bias
         
         return self.compress(z)
      
-    def train(self, dataset: list[tuple[list[float], float]], epochs=500, lr_w=0.001, lr_b=0.01):
+    def train(self, dataset: list[tuple[list[float], float]], epochs=500, learning_rate_w=0.001, learning_rate_b=0.01):
         for _ in range(epochs):
-            for entrada, salida_real in dataset:
-                salida_pred = self.predict(entrada)
+            for inp, expected_output in dataset:
+                predicted_ouput = self.predict(inp)
                  
-                e = salida_real - salida_pred.value
+                e = expected_output - predicted_ouput.value
                 
-                for capa in self.red_neuronal[1:]:
-                    for neurona in capa:
-                        for enlace in neurona.entradas:
-                            enlace.peso += lr_w * e * enlace.neurona.value
-                        neurona.bias += lr_b * e
+                for layer in self.neural_network[1:]:
+                    for neuron in layer:
+                        for enlace in neuron.inputs:
+                            enlace.weight += learning_rate_w * e * enlace.neuron.value
+                        neuron.bias += learning_rate_b * e
         
     def predict(self, data: list[float]):
-        if len(data) != len(self.red_neuronal[0]): 
-            return "Los datos no coinciden con los parámetros de entrada."
+        if len(data) != len(self.neural_network[0]): 
+            return "Los datos no coinciden con los parámetros de inp."
          
-        for i, capa in enumerate(self.red_neuronal):
+        for i, layer in enumerate(self.neural_network):
             if i == 0:
-                for i, neurona in enumerate(capa):
-                    neurona.value = data[i]
+                for i, neuron in enumerate(layer):
+                    neuron.value = data[i]
             else:
-                for i, neurona in enumerate(capa):
-                    neurona.value = self.activation(neurona.entradas, neurona.bias)
+                for i, neuron in enumerate(layer):
+                    neuron.value = self.activate(neuron.inputs, neuron.bias)
         
         
-        return self.red_neuronal[-1][0]
+        return self.neural_network[-1][0]
 
 
-n1 = Neurona()
-n2 = Neurona(np.random.uniform(-1,1))
+n1 = Neuron()
+n2 = Neuron(np.random.uniform(-1,1))
 
-n2.entradas = [
-    Enlace(np.random.uniform(-1,1), n1)
+n2.inputs = [
+    Connection(np.random.uniform(-1,1), n1)
 ]
 
 model = Model([
