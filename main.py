@@ -1,5 +1,5 @@
 import numpy as np 
-import logging, uuid, zlib, json 
+import logging, uuid, zlib, json, os
 
 DEBUG = True
 
@@ -86,6 +86,66 @@ class Model:
         self.activation_function = ""
         
         logging.debug("Model initialized.")
+    
+    @staticmethod
+    def validate_file(data: list):
+        if not isinstance(data, list):
+            return False
+        
+        for layer in data:
+            if not isinstance(layer, list):
+                return False
+            
+            for neuron in layer:
+                if not isinstance(neuron, list) or len(neuron) != 2:
+                    return False
+                
+                bias, weights = neuron
+                
+                if not isinstance(bias, (int, float)):
+                    return False
+                
+                if not isinstance(weights, list):
+                    return False
+                
+                for weight in weights:
+                    if not isinstance(weight, (int, float)):
+                        return False
+        return True
+                
+    @staticmethod
+    def load(path: str):
+        path = os.path.abspath(path)
+        
+        if not os.path.isfile(path):
+            logging.info("Error: El archivo no existe.")
+            return 0
+        
+        logging.debug("Cargando modelo...")
+        
+        with open(path, "rb") as file_model:
+            model_data = zlib.decompress(file_model.read())
+        
+        model_data = json.loads(model_data)
+        
+        if not Model.validate_file(model_data):
+            logging.info("Error: El archivo no es válido o está corrupto.")
+            return 0
+        logging.debug("Modelo cargado.")
+        
+        logging.debug("Configurando modelo...")
+        first_layer_neurons = len(model_data[0])
+        hidden_layers_neurons = [ len(layer) for layer in model_data[1:] ]
+        model = Model.new(first_layer_neurons, hidden_layers_neurons)
+        
+        for i_l, layer in enumerate(model.neural_network[1:]):
+            for i_n, neuron in enumerate(layer):
+                neuron.bias = model_data[i_l][i_n][0]
+                for i_c, connection in enumerate(neuron.inputs):
+                    connection.weight = model_data[i_l][i_n][1][i_c]
+        logging.debug(f"Estructura del modelo cargado: {model.neural_network}")
+        logging.info("Modelo cargado y configurado exitosamente.")
+        return model
         
     def save(self):
         logging.debug("Estructurando modelo para ser guardado...")
