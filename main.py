@@ -123,11 +123,11 @@ class Model:
         
         logging.debug("Cargando modelo...")
         
+        
         with open(path, "rb") as file_model:
             model_data = zlib.decompress(file_model.read())
         
         model_data = json.loads(model_data)
-        
         if not Model.validate_file(model_data):
             logging.info("Error: El archivo no es válido o está corrupto.")
             return 0
@@ -135,14 +135,18 @@ class Model:
         
         logging.debug("Configurando modelo...")
         first_layer_neurons = len(model_data[0])
-        hidden_layers_neurons = [ len(layer) for layer in model_data[1:] ]
+        
+        
+        hidden_layers_neurons = [ len(layer) for layer in model_data[1:] ] if len(model_data) >= 3 else []
+        
         model = Model.new(first_layer_neurons, hidden_layers_neurons)
+
         
         for i_l, layer in enumerate(model.neural_network[1:]):
             for i_n, neuron in enumerate(layer):
-                neuron.bias = model_data[i_l][i_n][0]
+                neuron.bias = model_data[i_l+1][i_n][0]
                 for i_c, connection in enumerate(neuron.inputs):
-                    connection.weight = model_data[i_l][i_n][1][i_c]
+                    connection.weight = model_data[i_l+1][i_n][1][i_c]
         logging.debug(f"Estructura del modelo cargado: {model.neural_network}")
         logging.info("Modelo cargado y configurado exitosamente.")
         return model
@@ -154,7 +158,7 @@ class Model:
         logging.debug(f"Datos del modelo estructurados: {model_data}")
         name = f"{uuid.uuid4()}.73nn"
         
-        model_data_string = f"{model_data}".encode("utf-8")
+        model_data_string = f"{json.dumps(model_data)}".encode("utf-8")
         logging.debug("Comprimiendo modelo...")
         
         try:
@@ -195,8 +199,9 @@ class Model:
             list[list[Neuron]]: The created neural network as a list of layers.
         """
         n = [Model.generate_layer(n_entrada)]
-        for l in layers:
-            n.append(Model.generate_layer(l))
+        if not len(layers) == 0:
+            for l in layers:
+                n.append(Model.generate_layer(l))
         n.append(Model.generate_layer(1))
 
         for i, layer in enumerate(n):
