@@ -108,7 +108,6 @@ README.md   # This documentation
 
 - Extend to multi-layer and full backpropagation.
 - Add support for multiple outputs/neuron layers.
-- Allow saving/loading model weights.
 - Integrate graphs to visualize learning progress.
 
 ---
