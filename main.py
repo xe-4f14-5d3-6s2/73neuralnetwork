@@ -135,7 +135,7 @@ class Model:
     def new(
         input_neurons: int,
         hidden_layers: list[int],
-        activation_function: str = "LeakyReLU",
+        activation_function: str = "ReLU",
     ):
         model = Model()
         model.neural_network = Model.generate_neural_network(
@@ -172,6 +172,9 @@ class Model:
         z = np.sum(W * A) + bias  # Weighted sum + bias
         a = self.activation(z)
         return (z, a)
+
+    def train(self, dataset: list, epochs: int, learning_rate_w: float, learning_rate_b: float):
+        pass
 
     def predict(self, data: list[float]):
         if len(data) != len(self.neural_network[0]):

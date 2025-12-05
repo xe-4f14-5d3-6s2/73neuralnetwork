@@ -109,7 +109,7 @@ README.md   # This documentation
 - Extend to multi-layer and full backpropagation.
 - Add support for multiple outputs/neuron layers.
 - Integrate graphs to visualize learning progress.
-
+- Integrate Adam optimization algorithm to estimate the learning rate.
 ---
 
 ## 📜 License
