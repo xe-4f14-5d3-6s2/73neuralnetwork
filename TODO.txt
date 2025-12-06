@@ -1,6 +1,0 @@
-- Hacer el sistema de backpropagation completo. (Completado)
-- Añadir opción para guardar modelos entrenados. (Completado)
-- Añadir opción para ver gráficas en tiempo real del aprendizaje.
-- Comprimir el archivo de salida del modelo para que ocupe menos espacio. (Completado)
-- Añadir opción para cargar modelos ya entrenados (Completado)
-- Añadir optimizador Adam para calcular los learning rate.
