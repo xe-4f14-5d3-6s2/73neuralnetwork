@@ -1,4 +1,6 @@
 using Distributions
+using JSON3
+using CodecZlib
 
 ############## Neuron
 mutable struct Neuron
@@ -24,13 +26,9 @@ mutable struct Model
 	activaction::String
 end
 
-function Model_generate_layer(n::Int64)
-	return fill(Neuron(), n)
-end
+generate_layer(n::Int64) = fill(Neuron(), n)
 
-function Model_generate_network(layers::Vector{Int64})
-	return [Model_generate_layer(n) for n in layers]
-end
+generate_network(layers::Vector{Int64}) = [generate_layer(n) for n in layers]
 
 function activaction(model::Model, z::Vector{Float64})
 	if model.activaction == "Sigmoid"
@@ -61,8 +59,52 @@ function predict(model::Model, data::Vector{Float64})
 	end
 end
 
+function is_valid_73nn(path::String)
+    endswith(path, ".73nn") || return false
+    isfile(path) || return false
+    data_string = try
+        open(path, "r") do f
+            String(read(GzipDecompressorStream(f)))
+        end
+    catch
+        return false
+    end
+    data = try
+        JSON3.read(data_string)
+    catch
+        return false
+    end
+    isa(data, AbstractVector) || return false
+    for layer in data
+        isa(layer, AbstractVector) || return false
+        for neuron in layer
+            isa(neuron, AbstractVector) || return false
+            length(neuron) == 2 || return false
+
+            bias = neuron[1]
+            weights = neuron[2]
+
+            (isa(bias, Number)) || return false
+            isa(weights, AbstractVector) || return false
+            all(w -> isa(w, Number), weights) || return false
+        end
+    end
+    return true
+end
+
+function save(model::Model, file_name::String)
+	data = JSON3.write([[ [neuron.bias, [conn.weight for conn in neuron.x]] for neuron in layer ] for layer in model.network])
+	open("$file_name.73nn", "w") do file
+		gz = GzipCompressorStream(file)
+		write(gz, data)
+		close(gz)
+	end
+	println("Archivo guardado como $file_name.73nn")
+	return 0
+end
+
 function Model(layers::Vector{Int64}, activaction::String)
-	m = Model(Model_generate_network(layers), activaction)
+	m = Model(generate_network(layers), activaction)
 
 	for (L, layer) in enumerate(m.network)
 		if L != 1
@@ -74,4 +116,40 @@ function Model(layers::Vector{Int64}, activaction::String)
 	return m
 
 end
+
+function load(path::String, activaction::String)
+	if is_valid_73nn(path)
+		data = open(path, "r") do file
+			gz = GzipDecompressorStream(file)
+			read(gz, String)
+		end
+
+		data_array = JSON3.read(data)
+
+		model = Model([length(layer) for layer in data_array], activaction)
+
+		for (L, layer) in enumerate(model.network)
+			for (N, neuron) in enumerate(layer)
+				neuron.bias = data_array[L][N][1]
+				for (C, conn) in enumerate(neuron.x)
+					conn.weight = data_array[L][N][2][C]
+				end
+			end
+		end
+
+		return model
+	end
+	return 0
+end
 #################### End Model
+
+#model = Model([2,4,4,1], "Sigmoid")
+#model = load("modelo_ej1.73nn", "Sigmoid")
+
+#println(predict(model, [5.0,2.0])[1].a)
+#println(predict(model, [10.0,20.0])[1].a)
+
+#0.771367836758079
+#0.7482614929538031
+
+#save(model, "modelo_ej1")
