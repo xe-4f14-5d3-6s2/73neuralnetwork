@@ -1,5 +1,6 @@
 # 🧠 73NeuralNetwork
 
+> Discontinued branch.
 > **A modern, minimalist neural network built from scratch in Python.**  
 > 🚀 Designed for learning how neural networks work step by step.
 
