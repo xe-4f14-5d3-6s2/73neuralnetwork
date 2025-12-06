@@ -73,18 +73,16 @@ class Model:
             return 0
 
         first_layer_neurons = len(model_data[0])
+        hidden_layers_neurons = [len(layer) for layer in model_data[1:]] if len(model_data) >= 3 else []
 
-        hidden_layers_neurons = (
-            [len(layer) for layer in model_data[1:]] if len(model_data) >= 3 else []
-        )
-
-        model = Model.new(first_layer_neurons, hidden_layers_neurons)
+        model = Model.new(first_layer_neurons, len(model_data[-1]), hidden_layers_neurons)
 
         for i_l, layer in enumerate(model.neural_network[1:]):
             for i_n, neuron in enumerate(layer):
                 neuron.bias = model_data[i_l + 1][i_n][0]
                 for i_c, connection in enumerate(neuron.inputs):
                     connection.weight = model_data[i_l + 1][i_n][1][i_c]
+
         logging.info("Modelo cargado y configurado exitosamente.")
         return model
 
@@ -95,12 +93,11 @@ class Model:
         ]
 
         name = f"{uuid.uuid4()}.73nn"
-
-        model_data_string = f"{json.dumps(model_data)}".encode("utf-8")
+        data_string = f"{json.dumps(model_data)}".encode("utf-8")
 
         try:
-            with open(name, "wb") as model:
-                model.write(zlib.compress(model_data_string, 9))
+            with open(name, "wb") as f:
+                f.write(zlib.compress(data_string, 9))
                 logging.info(f"Modelo guardado exitosamente como {name}")
                 return 1
         except Exception as e:
@@ -109,44 +106,33 @@ class Model:
 
     @staticmethod
     def generate_layer(n: int):
-        layer = [Neuron(np.random.uniform(-1, 1)) for _ in range(n)]
-        return layer
+        return [Neuron(np.random.uniform(-1, 1)) for _ in range(n)]
 
     @staticmethod
-    def generate_neural_network(n_entrada: int, layers: list[int]):
-        n = [Model.generate_layer(n_entrada)]
-        if not len(layers) == 0:
-            for l in layers:
-                n.append(Model.generate_layer(l))
-        n.append(Model.generate_layer(1))
+    def generate_neural_network(n_input: int, n_output: int, layers: list[int]):
+        n = [Model.generate_layer(n_input)]
+        for l in layers:
+            n.append(Model.generate_layer(l))
+        n.append(Model.generate_layer(n_output))
 
-        for i, layer in enumerate(n):
-            if i != 0:
-                # Connect each neuron to every neuron in the previous layer
-                for neuron in layer:
-                    neuron.inputs = [
-                        Connection(np.random.uniform(-1, 1), a_neuron)
-                        for a_neuron in n[i - 1]
-                    ]
-
+        for i in range(1, len(n)):
+            for neuron in n[i]:
+                neuron.inputs = [
+                    Connection(np.random.uniform(-1, 1), prev)
+                    for prev in n[i - 1]
+                ]
         return n
 
     @staticmethod
-    def new(
-        input_neurons: int,
-        hidden_layers: list[int],
-        activation_function: str = "ReLU",
-    ):
+    def new(input_neurons: int, output_neurons: int, hidden_layers: list[int], activation_function="ReLU"):
         model = Model()
         model.neural_network = Model.generate_neural_network(
-            input_neurons, hidden_layers
+            input_neurons, output_neurons, hidden_layers
         )
-
         model.activation_function = activation_function
-
         return model
 
-    def activation_prime(self, z: float):
+    def activation_prime(self, z):
         if self.activation_function == "ReLU":
             return 1.0 if z > 0 else 0.0
         if self.activation_function == "LeakyReLU":
@@ -154,10 +140,9 @@ class Model:
         if self.activation_function == "Sigmoid":
             s = 1 / (1 + np.exp(-z))
             return s * (1 - s)
-
         return 1.0
 
-    def activation(self, z: float):
+    def activation(self, z):
         if self.activation_function == "ReLU":
             return z if z > 0 else 0
         if self.activation_function == "LeakyReLU":
@@ -166,33 +151,60 @@ class Model:
             return 1 / (1 + np.exp(-z))
         return z
 
-    def activate(self, inputs: list[Connection], bias: float):
-        W = np.array([e.weight for e in inputs])  # Array of weights
-        A = np.array([e.neuron.a for e in inputs])  # Array of input neuron values
-        z = np.sum(W * A) + bias  # Weighted sum + bias
+    def activate(self, inputs, bias):
+        W = np.array([e.weight for e in inputs])
+        A = np.array([e.neuron.a for e in inputs])
+        z = np.sum(W * A) + bias
         a = self.activation(z)
-        return (z, a)
+        return z, a
 
-    def train(self, dataset: list, epochs: int, learning_rate_w: float, learning_rate_b: float):
-        pass
+    def train(self, dataset, epochs, learning_rate_w, learning_rate_b):
+        for epoch in range(epochs):
+            np.random.shuffle(dataset)
 
-    def predict(self, data: list[float]):
+            for x, target in dataset:
+                self.predict(x)
+
+                A = [np.array([n.a for n in layer]) for layer in self.neural_network]
+                Z = [np.array([n.z for n in layer]) if i > 0 else None
+                     for i, layer in enumerate(self.neural_network)]
+
+                L = len(self.neural_network) - 1
+                d = [None] * (L + 1)
+
+                y = np.array(target)
+                y_hat = A[-1]
+                d[L] = (y_hat - y) * np.array([self.activation_prime(z) for z in Z[L]])
+                print(f"Error: {y - y_hat} | Epoch: {epoch}")
+                for l in range(L - 1, 0, -1):
+                    W_next = np.array([
+                        [n_next.inputs[j].weight for j in range(len(self.neural_network[l]))]
+                        for n_next in self.neural_network[l + 1]
+                    ])
+
+                    d[l] = (W_next.T @ d[l + 1]) * np.array(
+                        [self.activation_prime(z) for z in Z[l]]
+                    )
+
+                for l in range(1, L + 1):
+                    for i_n, neuron in enumerate(self.neural_network[l]):
+                        neuron.bias -= learning_rate_b * d[l][i_n]
+
+                        for j, connection in enumerate(neuron.inputs):
+                            connection.weight -= learning_rate_w * d[l][i_n] * A[l - 1][j]
+
+    def predict(self, data):
         if len(data) != len(self.neural_network[0]):
-            logging.error(
-                "The entered data does not match the input values of the neural network."
-            )
-            return "The entered data does not match the input values of the neural network."
+            logging.error("The entered data does not match the input values.")
+            return
 
-        for i_l, layer in enumerate(self.neural_network):
-            if i_l == 0:
-                # Set values for the input layer neurons
-                for j, neuron in enumerate(layer):
-                    neuron.a = data[j]
-            else:
-                # Calculate activation for the rest layers
-                for neuron in layer:
-                    Zn, An = self.activate(neuron.inputs, neuron.bias)
-                    neuron.a = An
-                    neuron.z = Zn
-        logging.info(f"Predicción final: {self.neural_network[-1][0].a}")
-        return self.neural_network[-1][0].a  # Return final output neuron
+        for j, neuron in enumerate(self.neural_network[0]):
+            neuron.a = data[j]
+
+        for l in range(1, len(self.neural_network)):
+            for neuron in self.neural_network[l]:
+                z, a = self.activate(neuron.inputs, neuron.bias)
+                neuron.z = z
+                neuron.a = a
+
+        return self.neural_network[-1]
