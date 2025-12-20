@@ -1,22 +1,24 @@
-using Distributions
-using Flux
-using JSON3
-using CodecZlib
+using Distributions, Random, Flux, JSON3, CodecZlib, Zygote
 
 
 #################### Layer
 mutable struct Layer
 	W::Matrix{Float64}
 	b::Vector{Float64}
+	z::Vector{Float64}
 	σ::Function
+	dσ::Function
 end
 function Layer(output::Int64, input::Int64, σ::Function)
-	W = rand(output, input)
+	W = randn(output, input) .* 0.1
 	b = rand(output)
-	return Layer(W, b, σ)
+	z = rand(output)
+	dσ(x) = Zygote.gradient(σ, x)[1]
+	return Layer(W, b, z, σ, dσ)
 end
 function (dns::Layer)(x::Vector{Float64})
-	return dns.σ.(dns.W * x + dns.b)
+	dns.z = dns.W * x + dns.b
+	return dns.σ.(dns.z)
 end
 #################### End Layer
 
@@ -54,9 +56,64 @@ function load(path::String, activaction::Vector)
 	end
 	return model
 end
+function fit(model::Model, dataset::Vector{Vector{Vector{Float64}}}, epochs::Int64, lr_w::Float64, lr_b::Float64)
+	for ep in 1:epochs
+		println("Epoch: $ep")
+		for (X, y) in shuffle(dataset)
+			ŷ = model(X)
+		
+			δ = []
+
+			ðC_ðaL = 2 * (ŷ - y)
+			ðaL_ðzL = model.layers[end].dσ.(model.layers[end].z)
+			δL = ðC_ðaL .* ðaL_ðzL
+			pushfirst!(δ, δL)
+
+			for l in (length(model.layers)-1):-1:1
+				ðal_ðzl = model.layers[l].dσ.(model.layers[l].z)
+				backprop_err = model.layers[l+1].W' * δ[1]
+
+				δl = ðal_ðzl .* backprop_err
+
+				pushfirst!(δ, δl)
+			end
+
+			acts = [X]
+			for l in model.layers
+				push!(acts, l.σ.(l.z))
+			end
+
+			for l in 1:length(model.layers)
+				ðC_ðWl = δ[l] * acts[l]'
+				model.layers[l].W .-= lr_w .* ðC_ðWl
+				model.layers[l].b .-= lr_b .* δ[l]
+			end
+		end
+	end
+end
 #################### End Model
 
+max_input = 5000.0
+max_output = (5000.0 * 1.8) + 32.0
 
+#dataset = [[[x/max_input],[(x * 1.8 + 32)/max_output]] for x in 1:5000]
+
+#model = Model([
+#	Layer(1,1, leakyrelu),
+#	Layer(1,1, x -> x)
+#])
+
+#fit(model, dataset, 500, 0.01, 0.01)
+
+test_val = 10.0
+
+#pred_norm = model([test_val / max_input])[1]
+
+#println("Predicción: ", pred_norm * max_output)
+#save(model, "celsius_to_fahrenheit")
+model2 = load("celsius_to_fahrenheit.73nn", [leakyrelu, x -> x])
+pred_norm2 = model2([test_val / max_input])[1]
+println("Predicción 2: ", pred_norm2 * max_output)
 #model = Model([Layer(2, 2, leakyrelu), Layer(2, 2, leakyrelu)])
 #println(model([200.0, 500.0]))
 #[364.89265605641253, 524.3266738277267]
